@@ -1,4 +1,5 @@
-define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'globalize', 'loading', 'dom'], function (playbackManager, inputManager, connectionManager, embyRouter, globalize, loading, dom) {
+define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'globalize', 'loading', 'dom', 'recordingHelper'], function (playbackManager, inputManager, connectionManager, embyRouter, globalize, loading, dom, recordingHelper) {
+    'use strict';
 
     function playAllFromHere(card, serverId, queue) {
 
@@ -10,7 +11,7 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
         var foundCard = false;
         for (var i = 0, length = cards.length; i < length; i++) {
-            if (cards[i] == card) {
+            if (cards[i] === card) {
                 foundCard = true;
             }
             if (foundCard) {
@@ -58,7 +59,7 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
                 }).indexOf(startItemId);
 
-                if (index == -1) {
+                if (index === -1) {
                     index = 0;
                 }
 
@@ -82,13 +83,21 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
     function showItem(item, options) {
 
-        if (item.Type == 'Photo') {
+        if (item.Type === 'Photo') {
 
             showSlideshow(item.Id, item.ServerId);
             return;
         }
 
         embyRouter.showItem(item, options);
+    }
+
+    function showProgramDialog(item) {
+
+        require(['recordingCreator'], function (recordingCreator) {
+
+            recordingCreator.show(item.Id, item.ServerId);
+        });
     }
 
     function getItem(button) {
@@ -100,8 +109,11 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
         var apiClient = connectionManager.getApiClient(serverId);
 
-        if (type == 'Timer') {
+        if (type === 'Timer') {
             return apiClient.getLiveTvTimer(id);
+        }
+        if (type === 'SeriesTimer') {
+            return apiClient.getLiveTvSeriesTimer(id);
         }
         return apiClient.getItem(apiClient.getCurrentUserId(), id);
     }
@@ -131,12 +143,14 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
                 }, options || {})).then(function (result) {
 
-                    if (result.command == 'playallfromhere' || result.command == 'queueallfromhere') {
+                    var itemsContainer;
+
+                    if (result.command === 'playallfromhere' || result.command === 'queueallfromhere') {
                         executeAction(card, options.positionTo, result.command);
                     }
-                    else if (result.command == 'removefromplaylist' || result.command == 'removefromcollection') {
+                    else if (result.command === 'removefromplaylist' || result.command === 'removefromcollection') {
 
-                        var itemsContainer = options.itemsContainer || dom.parentWithAttribute(card, 'is', 'emby-itemscontainer');
+                        itemsContainer = options.itemsContainer || dom.parentWithAttribute(card, 'is', 'emby-itemscontainer');
 
                         if (itemsContainer) {
                             itemsContainer.dispatchEvent(new CustomEvent('needsrefresh', {
@@ -146,9 +160,9 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
                             }));
                         }
                     }
-                    else if (result.command == 'canceltimer') {
+                    else if (result.command === 'canceltimer') {
 
-                        var itemsContainer = options.itemsContainer || dom.parentWithAttribute(card, 'is', 'emby-itemscontainer');
+                        itemsContainer = options.itemsContainer || dom.parentWithAttribute(card, 'is', 'emby-itemscontainer');
 
                         if (itemsContainer) {
                             itemsContainer.dispatchEvent(new CustomEvent('timercancelled', {
@@ -168,12 +182,13 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
         return {
             Type: card.getAttribute('data-type'),
             Id: card.getAttribute('data-id'),
+            TimerId: card.getAttribute('data-timerid'),
             CollectionType: card.getAttribute('data-collectiontype'),
             ChannelId: card.getAttribute('data-channelid'),
             SeriesId: card.getAttribute('data-seriesid'),
             ServerId: card.getAttribute('data-serverid'),
             MediaType: card.getAttribute('data-mediatype'),
-            IsFolder: card.getAttribute('data-isfolder') == 'true',
+            IsFolder: card.getAttribute('data-isfolder') === 'true',
             UserData: {
                 PlaybackPositionTicks: parseInt(card.getAttribute('data-positionticks') || '0')
             }
@@ -210,18 +225,23 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
         var serverId = item.ServerId;
         var type = item.Type;
 
-        if (action == 'link') {
+        if (action === 'link') {
 
             showItem(item, {
                 context: card.getAttribute('data-context')
             });
         }
 
-        else if (action == 'instantmix') {
+        else if (action === 'programdialog') {
+
+            showProgramDialog(item);
+        }
+
+        else if (action === 'instantmix') {
             playbackManager.instantMix(id, serverId);
         }
 
-        else if (action == 'play') {
+        else if (action === 'play') {
 
             var startPositionTicks = parseInt(card.getAttribute('data-positionticks') || '0');
 
@@ -232,25 +252,25 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
             });
         }
 
-        else if (action == 'playallfromhere') {
+        else if (action === 'playallfromhere') {
             playAllFromHere(card, serverId);
         }
 
-        else if (action == 'queueallfromhere') {
+        else if (action === 'queueallfromhere') {
             playAllFromHere(card, serverId, true);
         }
 
-        else if (action == 'setplaylistindex') {
+        else if (action === 'setplaylistindex') {
             playbackManager.currentPlaylistIndex(parseInt(card.getAttribute('data-index')));
         }
 
-        else if (action == 'record') {
+        else if (action === 'record') {
             onRecordCommand(serverId, id, type, card.getAttribute('data-timerid'), card.getAttribute('data-seriestimerid'));
         }
 
-        else if (action == 'menu') {
+        else if (action === 'menu') {
 
-            var options = target.getAttribute('data-playoptions') == 'false' ?
+            var options = target.getAttribute('data-playoptions') === 'false' ?
             {
                 shuffle: false,
                 instantMix: false,
@@ -266,17 +286,17 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
             showContextMenu(card, options);
         }
 
-        else if (action == 'playmenu') {
+        else if (action === 'playmenu') {
             showPlayMenu(card, target);
         }
 
-        else if (action == 'edit') {
+        else if (action === 'edit') {
             getItem(target).then(function (item) {
                 editItem(item, serverId);
             });
         }
 
-        else if (action == 'playtrailer') {
+        else if (action === 'playtrailer') {
             getItem(target).then(playTrailer);
         }
     }
@@ -298,11 +318,18 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
             var serverId = apiClient.serverInfo().Id;
 
-            if (item.Type == 'Timer') {
-                require(['recordingEditor'], function (recordingEditor) {
+            if (item.Type === 'Timer') {
+                if (item.ProgramId) {
+                    require(['recordingCreator'], function (recordingCreator) {
 
-                    recordingEditor.show(item.Id, serverId).then(resolve, reject);
-                });
+                        recordingCreator.show(item.ProgramId, serverId).then(resolve, reject);
+                    });
+                } else {
+                    require(['recordingEditor'], function (recordingEditor) {
+
+                        recordingEditor.show(item.Id, serverId).then(resolve, reject);
+                    });
+                }
             } else {
                 require(['metadataEditor'], function (metadataEditor) {
 
@@ -314,78 +341,11 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
 
     function onRecordCommand(serverId, id, type, timerId, seriesTimerId) {
 
-        var apiClient = connectionManager.getApiClient(serverId);
+        if (type === 'Program' || timerId || seriesTimerId) {
 
-        if (seriesTimerId && timerId) {
-
-            // cancel 
-            cancelTimer(apiClient, timerId, true);
-
-        } else if (timerId) {
-
-            // change to series recording, if possible
-            // otherwise cancel individual recording
-            changeRecordingToSeries(apiClient, timerId, id);
-
-        } else if (type == 'Program') {
-            // schedule recording
-            createRecording(apiClient, id);
+            var programId = type === 'Program' ? id : null;
+            recordingHelper.toggle(serverId, programId, timerId, seriesTimerId);
         }
-    }
-
-    function changeRecordingToSeries(apiClient, timerId, programId) {
-
-        loading.show();
-
-        apiClient.getItem(apiClient.getCurrentUserId(), programId).then(function (item) {
-
-            if (item.IsSeries) {
-                // cancel, then create series
-                cancelTimer(apiClient, timerId, false).then(function () {
-                    apiClient.getNewLiveTvTimerDefaults({ programId: programId }).then(function (timerDefaults) {
-
-                        apiClient.createLiveTvSeriesTimer(timerDefaults).then(function () {
-
-                            loading.hide();
-                            sendToast(globalize.translate('sharedcomponents#SeriesRecordingScheduled'));
-                        });
-                    });
-                });
-            } else {
-                // cancel 
-                cancelTimer(apiClient, timerId, true);
-            }
-        });
-    }
-
-    function cancelTimer(apiClient, timerId, hideLoading) {
-        loading.show();
-        return apiClient.cancelLiveTvTimer(timerId).then(function () {
-
-            if (hideLoading) {
-                loading.hide();
-                sendToast(globalize.translate('sharedcomponents#RecordingCancelled'));
-            }
-        });
-    }
-
-    function createRecording(apiClient, programId) {
-
-        loading.show();
-        apiClient.getNewLiveTvTimerDefaults({ programId: programId }).then(function (item) {
-
-            apiClient.createLiveTvTimer(item).then(function () {
-
-                loading.hide();
-                sendToast(globalize.translate('sharedcomponents#RecordingScheduled'));
-            });
-        });
-    }
-
-    function sendToast(msg) {
-        require(['toast'], function (toast) {
-            toast(msg);
-        });
     }
 
     function onClick(e) {
@@ -413,12 +373,15 @@ define(['playbackManager', 'inputManager', 'connectionManager', 'embyRouter', 'g
     }
 
     function onCommand(e) {
+
         var cmd = e.detail.command;
 
-        if (cmd == 'play' || cmd == 'record' || cmd == 'menu' || cmd == 'info') {
+        if (cmd === 'play' || cmd === 'record' || cmd === 'menu' || cmd === 'info') {
             var card = dom.parentWithClass(e.target, 'itemAction');
 
             if (card) {
+                e.preventDefault();
+                e.stopPropagation();
                 executeAction(card, card, cmd);
             }
         }

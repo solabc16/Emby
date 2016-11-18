@@ -49,7 +49,8 @@ namespace MediaBrowser.Server.Implementations.IO
         private readonly IReadOnlyList<string> _alwaysIgnoreSubstrings = new List<string>
         {
             // Synology
-            "@eaDir",
+            "eaDir",
+            "#recycle",
             ".wd_tv",
             ".actors"
         };
@@ -171,32 +172,21 @@ namespace MediaBrowser.Server.Implementations.IO
             Start();
         }
 
-        private bool EnableLibraryMonitor
-        {
-            get
-            {
-                switch (ConfigurationManager.Configuration.EnableLibraryMonitor)
-                {
-                    case AutoOnOff.Auto:
-                        return Environment.OSVersion.Platform == PlatformID.Win32NT;
-                    case AutoOnOff.Enabled:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-        }
-
         private bool IsLibraryMonitorEnabaled(BaseItem item)
         {
+            if (item is BasePluginFolder)
+            {
+                return false;
+            }
+
             var options = LibraryManager.GetLibraryOptions(item);
 
-            if (options != null && options.SchemaVersion >= 1)
+            if (options != null)
             {
                 return options.EnableRealtimeMonitor;
             }
 
-            return EnableLibraryMonitor;
+            return false;
         }
 
         public void Start()
@@ -420,7 +410,20 @@ namespace MediaBrowser.Server.Implementations.IO
             {
                 Logger.Debug("Changed detected of type " + e.ChangeType + " to " + e.FullPath);
 
-                ReportFileSystemChanged(e.FullPath);
+                var path = e.FullPath;
+
+                // For deletes, use the parent path
+                if (e.ChangeType == WatcherChangeTypes.Deleted)
+                {
+                    var parentPath = Path.GetDirectoryName(path);
+
+                    if (!string.IsNullOrWhiteSpace(parentPath))
+                    {
+                        path = parentPath;
+                    }
+                }
+
+                ReportFileSystemChanged(path);
             }
             catch (Exception ex)
             {

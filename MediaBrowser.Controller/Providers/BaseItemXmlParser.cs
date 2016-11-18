@@ -185,14 +185,12 @@ namespace MediaBrowser.Controller.Providers
                     {
                         var text = reader.ReadElementContentAsString();
 
-                        var hasCriticRating = item as IHasCriticRating;
-
-                        if (hasCriticRating != null && !string.IsNullOrEmpty(text))
+                        if (!string.IsNullOrEmpty(text))
                         {
                             float value;
                             if (float.TryParse(text, NumberStyles.Any, _usCulture, out value))
                             {
-                                hasCriticRating.CriticRating = value;
+                                item.CriticRating = value;
                             }
                         }
 
@@ -292,12 +290,7 @@ namespace MediaBrowser.Controller.Providers
 
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            var hasShortOverview = item as IHasShortOverview;
-
-                            if (hasShortOverview != null)
-                            {
-                                hasShortOverview.ShortOverview = val;
-                            }
+                            item.ShortOverview = val;
                         }
 
                         break;
@@ -309,12 +302,7 @@ namespace MediaBrowser.Controller.Providers
 
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            var hasCriticRating = item as IHasCriticRating;
-
-                            if (hasCriticRating != null)
-                            {
-                                hasCriticRating.CriticRatingSummary = val;
-                            }
+                            item.CriticRatingSummary = val;
                         }
 
                         break;
@@ -347,7 +335,7 @@ namespace MediaBrowser.Controller.Providers
                             var person = item as Person;
                             if (person != null)
                             {
-                                person.PlaceOfBirth = val;
+                                person.ProductionLocations = new List<string> { val };
                             }
                         }
 
@@ -790,7 +778,7 @@ namespace MediaBrowser.Controller.Providers
                     }
 
                 default:
-                {
+                    {
                         string readerName = reader.Name;
                         string providerIdValue;
                         if (_validProviderIds.TryGetValue(readerName, out providerIdValue))
@@ -893,14 +881,6 @@ namespace MediaBrowser.Controller.Providers
 
                                 if (!string.IsNullOrWhiteSpace(val))
                                 {
-                                    var hasProductionLocations = item as IHasProductionLocations;
-                                    if (hasProductionLocations != null)
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(val))
-                                        {
-                                            hasProductionLocations.AddProductionLocation(val);
-                                        }
-                                    }
                                 }
                                 break;
                             }
@@ -934,14 +914,7 @@ namespace MediaBrowser.Controller.Providers
 
                                 if (!string.IsNullOrWhiteSpace(val))
                                 {
-                                    var hasTaglines = item as IHasTaglines;
-                                    if (hasTaglines != null)
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(val))
-                                        {
-                                            hasTaglines.AddTagline(val);
-                                        }
-                                    }
+                                    item.Tagline = val;
                                 }
                                 break;
                             }

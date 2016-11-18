@@ -54,7 +54,7 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.TV
         {
             if (args.IsDirectory)
             {
-                if (args.HasParent<Series>())
+                if (args.HasParent<Series>() || args.HasParent<Season>())
                 {
                     return null;
                 }
@@ -62,6 +62,15 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.TV
                 var collectionType = args.GetCollectionType();
                 if (string.Equals(collectionType, CollectionType.TvShows, StringComparison.OrdinalIgnoreCase))
                 {
+                    //if (args.ContainsFileSystemEntryByName("tvshow.nfo"))
+                    //{
+                    //    return new Series
+                    //    {
+                    //        Path = args.Path,
+                    //        Name = Path.GetFileName(args.Path)
+                    //    };
+                    //}
+
                     var configuredContentType = _libraryManager.GetConfiguredContentType(args.Path);
                     if (!string.Equals(configuredContentType, CollectionType.TvShows, StringComparison.OrdinalIgnoreCase))
                     {
@@ -72,22 +81,35 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.TV
                         };
                     }
                 }
-                else
+                else if (string.IsNullOrWhiteSpace(collectionType))
                 {
-                    if (string.IsNullOrWhiteSpace(collectionType))
+                    if (args.ContainsFileSystemEntryByName("tvshow.nfo"))
                     {
                         if (args.Parent.IsRoot)
                         {
+                            // For now, return null, but if we want to allow this in the future then add some additional checks to guard against a misplaced tvshow.nfo
                             return null;
                         }
-                        if (IsSeriesFolder(args.Path, args.FileSystemChildren, args.DirectoryService, _fileSystem, _logger, _libraryManager, args.GetLibraryOptions(), false))
+
+                        return new Series
                         {
-                            return new Series
-                            {
-                                Path = args.Path,
-                                Name = Path.GetFileName(args.Path)
-                            };
-                        }
+                            Path = args.Path,
+                            Name = Path.GetFileName(args.Path)
+                        };
+                    }
+
+                    if (args.Parent.IsRoot)
+                    {
+                        return null;
+                    }
+
+                    if (IsSeriesFolder(args.Path, args.FileSystemChildren, args.DirectoryService, _fileSystem, _logger, _libraryManager, args.GetLibraryOptions(), false))
+                    {
+                        return new Series
+                        {
+                            Path = args.Path,
+                            Name = Path.GetFileName(args.Path)
+                        };
                     }
                 }
             }

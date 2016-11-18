@@ -48,12 +48,6 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.Movies
             string collectionType,
             IDirectoryService directoryService)
         {
-            if (parent != null && parent.Path != null && parent.Path.IndexOf("disney", StringComparison.OrdinalIgnoreCase) != -1)
-            {
-                var b = true;
-                var a = b;
-            }
-
             var result = ResolveMultipleInternal(parent, files, collectionType, directoryService);
 
             if (result != null)
@@ -219,20 +213,21 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.Movies
 
                 if (string.Equals(collectionType, CollectionType.MusicVideos, StringComparison.OrdinalIgnoreCase))
                 {
-                    return FindMovie<MusicVideo>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                    return FindMovie<MusicVideo>(args.Path, args.Parent, files, args.DirectoryService, collectionType, false);
                 }
 
                 if (string.Equals(collectionType, CollectionType.HomeVideos, StringComparison.OrdinalIgnoreCase))
                 {
-                    return FindMovie<Video>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                    return FindMovie<Video>(args.Path, args.Parent, files, args.DirectoryService, collectionType, false);
                 }
 
                 if (string.IsNullOrEmpty(collectionType))
                 {
-                    // Owned items should just use the plain video type
+                    // Owned items will be caught by the plain video resolver
                     if (args.Parent == null)
                     {
-                        return FindMovie<Video>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                        //return FindMovie<Video>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                        return null;
                     }
 
                     if (args.HasParent<Series>())
@@ -240,12 +235,14 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.Movies
                         return null;
                     }
 
-                    return FindMovie<Movie>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                    {
+                        return FindMovie<Movie>(args.Path, args.Parent, files, args.DirectoryService, collectionType, true);
+                    }
                 }
 
                 if (string.Equals(collectionType, CollectionType.Movies, StringComparison.OrdinalIgnoreCase))
                 {
-                    return FindMovie<Movie>(args.Path, args.Parent, files, args.DirectoryService, collectionType);
+                    return FindMovie<Movie>(args.Path, args.Parent, files, args.DirectoryService, collectionType, true);
                 }
 
                 return null;
@@ -360,13 +357,8 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.Movies
         /// Finds a movie based on a child file system entries
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="path">The path.</param>
-        /// <param name="parent">The parent.</param>
-        /// <param name="fileSystemEntries">The file system entries.</param>
-        /// <param name="directoryService">The directory service.</param>
-        /// <param name="collectionType">Type of the collection.</param>
         /// <returns>Movie.</returns>
-        private T FindMovie<T>(string path, Folder parent, List<FileSystemMetadata> fileSystemEntries, IDirectoryService directoryService, string collectionType)
+        private T FindMovie<T>(string path, Folder parent, List<FileSystemMetadata> fileSystemEntries, IDirectoryService directoryService, string collectionType, bool allowFilesAsFolders)
             where T : Video, new()
         {
             var multiDiscFolders = new List<FileSystemMetadata>();
@@ -413,23 +405,27 @@ namespace MediaBrowser.Server.Implementations.Library.Resolvers.Movies
                 }
             }
 
-            var supportsMultiVersion = !string.Equals(collectionType, CollectionType.HomeVideos) &&
-                                    !string.Equals(collectionType, CollectionType.Photos) &&
-                                    !string.Equals(collectionType, CollectionType.MusicVideos);
-
-            var result = ResolveVideos<T>(parent, fileSystemEntries, directoryService, supportsMultiVersion);
-
-            if (result.Items.Count == 1)
+            if (allowFilesAsFolders)
             {
-                var movie = (T)result.Items[0];
-                movie.IsInMixedFolder = false;
-                movie.Name = Path.GetFileName(movie.ContainingFolderPath);
-                return movie;
-            }
+                // TODO: Allow GetMultiDiscMovie in here
+                var supportsMultiVersion = !string.Equals(collectionType, CollectionType.HomeVideos) &&
+                                        !string.Equals(collectionType, CollectionType.Photos) &&
+                                        !string.Equals(collectionType, CollectionType.MusicVideos);
 
-            if (result.Items.Count == 0 && multiDiscFolders.Count > 0)
-            {
-                return GetMultiDiscMovie<T>(multiDiscFolders, directoryService);
+                var result = ResolveVideos<T>(parent, fileSystemEntries, directoryService, supportsMultiVersion);
+
+                if (result.Items.Count == 1)
+                {
+                    var movie = (T)result.Items[0];
+                    movie.IsInMixedFolder = false;
+                    movie.Name = Path.GetFileName(movie.ContainingFolderPath);
+                    return movie;
+                }
+
+                if (result.Items.Count == 0 && multiDiscFolders.Count > 0)
+                {
+                    return GetMultiDiscMovie<T>(multiDiscFolders, directoryService);
+                }
             }
 
             return null;

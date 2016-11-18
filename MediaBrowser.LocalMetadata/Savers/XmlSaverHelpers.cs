@@ -258,18 +258,14 @@ namespace MediaBrowser.LocalMetadata.Savers
                 builder.Append("<Type>" + SecurityElement.Escape(item.DisplayMediaType) + "</Type>");
             }
 
-            var hasCriticRating = item as IHasCriticRating;
-            if (hasCriticRating != null)
+            if (item.CriticRating.HasValue)
             {
-                if (hasCriticRating.CriticRating.HasValue)
-                {
-                    builder.Append("<CriticRating>" + SecurityElement.Escape(hasCriticRating.CriticRating.Value.ToString(UsCulture)) + "</CriticRating>");
-                }
+                builder.Append("<CriticRating>" + SecurityElement.Escape(item.CriticRating.Value.ToString(UsCulture)) + "</CriticRating>");
+            }
 
-                if (!string.IsNullOrEmpty(hasCriticRating.CriticRatingSummary))
-                {
-                    builder.Append("<CriticRatingSummary><![CDATA[" + hasCriticRating.CriticRatingSummary + "]]></CriticRatingSummary>");
-                }
+            if (!string.IsNullOrEmpty(item.CriticRatingSummary))
+            {
+                builder.Append("<CriticRatingSummary><![CDATA[" + item.CriticRatingSummary + "]]></CriticRatingSummary>");
             }
 
             if (!string.IsNullOrEmpty(item.Overview))
@@ -285,14 +281,10 @@ namespace MediaBrowser.LocalMetadata.Savers
                     builder.Append("<OriginalTitle>" + SecurityElement.Escape(hasOriginalTitle.OriginalTitle) + "</OriginalTitle>");
                 }
             }
-            
-            var hasShortOverview = item as IHasShortOverview;
-            if (hasShortOverview != null)
+
+            if (!string.IsNullOrEmpty(item.ShortOverview))
             {
-                if (!string.IsNullOrEmpty(hasShortOverview.ShortOverview))
-                {
-                    builder.Append("<ShortOverview><![CDATA[" + hasShortOverview.ShortOverview + "]]></ShortOverview>");
-                }
+                builder.Append("<ShortOverview><![CDATA[" + item.ShortOverview + "]]></ShortOverview>");
             }
 
             if (!string.IsNullOrEmpty(item.CustomRating))
@@ -350,21 +342,17 @@ namespace MediaBrowser.LocalMetadata.Savers
                 }
             }
 
-            var hasProductionLocations = item as IHasProductionLocations;
-            if (hasProductionLocations != null)
-            {
-                if (hasProductionLocations.ProductionLocations.Count > 0)
-                {
-                    builder.Append("<Countries>");
+            //if (hasProductionLocations.ProductionLocations.Count > 0)
+            //{
+            //    builder.Append("<Countries>");
 
-                    foreach (var name in hasProductionLocations.ProductionLocations)
-                    {
-                        builder.Append("<Country>" + SecurityElement.Escape(name) + "</Country>");
-                    }
+            //    foreach (var name in hasProductionLocations.ProductionLocations)
+            //    {
+            //        builder.Append("<Country>" + SecurityElement.Escape(name) + "</Country>");
+            //    }
 
-                    builder.Append("</Countries>");
-                }
-            }
+            //    builder.Append("</Countries>");
+            //}
 
             var hasDisplayOrder = item as IHasDisplayOrder;
             if (hasDisplayOrder != null && !string.IsNullOrEmpty(hasDisplayOrder.DisplayOrder))
@@ -457,20 +445,11 @@ namespace MediaBrowser.LocalMetadata.Savers
                 }
             }
 
-            var hasTagline = item as IHasTaglines;
-            if (hasTagline != null)
+            if (!string.IsNullOrWhiteSpace(item.Tagline))
             {
-                if (hasTagline.Taglines.Count > 0)
-                {
-                    builder.Append("<Taglines>");
-
-                    foreach (var tagline in hasTagline.Taglines)
-                    {
-                        builder.Append("<Tagline>" + SecurityElement.Escape(tagline) + "</Tagline>");
-                    }
-
-                    builder.Append("</Taglines>");
-                }
+                builder.Append("<Taglines>");
+                builder.Append("<Tagline>" + SecurityElement.Escape(item.Tagline) + "</Tagline>");
+                builder.Append("</Taglines>");
             }
 
             if (item.Genres.Count > 0)

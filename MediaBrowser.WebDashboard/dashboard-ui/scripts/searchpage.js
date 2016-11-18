@@ -45,9 +45,7 @@
         }
 
         function showTextSuggestions() {
-            if (AppInfo.enableAppLayouts) {
-                textSuggestions.classList.remove('hide');
-            }
+            textSuggestions.classList.remove('hide');
         }
 
         function getAdditionalTextLines(hint) {
@@ -115,7 +113,6 @@
             var html = cardBuilder.getCardsHtml({
                 items: hints,
                 shape: "auto",
-                lazy: true,
                 overlayText: false,
                 showTitle: true,
                 centerImage: true,
@@ -176,10 +173,8 @@
             }, 300);
         }
 
-        if (AppInfo.enableAppLayouts) {
-            showTextSuggestions();
-            loadSuggestions(view);
-        }
+        showTextSuggestions();
+        loadSuggestions(view);
 
         view.querySelector('.txtSearch').addEventListener('input', function () {
             onSearchChange(this.value);

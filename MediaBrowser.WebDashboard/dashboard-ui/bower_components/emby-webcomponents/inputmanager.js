@@ -1,4 +1,5 @@
 define(['playbackManager', 'focusManager', 'embyRouter', 'dom'], function (playbackManager, focusManager, embyRouter, dom) {
+    'use strict';
 
     var lastInputTime = new Date().getTime();
 
@@ -152,6 +153,12 @@ define(['playbackManager', 'focusManager', 'embyRouter', 'dom'], function (playb
                 break;
             case 'togglemute':
                 playbackManager.toggleMute();
+                break;
+            case 'channelup':
+                playbackManager.nextTrack();
+                break;
+            case 'channeldown':
+                playbackManager.previousTrack();
                 break;
             case 'volumedown':
                 playbackManager.volumeDown();

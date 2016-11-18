@@ -1,4 +1,4 @@
-﻿define(['libraryBrowser', 'cardBuilder', 'appSettings', 'components/groupedcards', 'dom', 'scrollStyles', 'emby-button', 'paper-icon-button-light', 'emby-itemscontainer'], function (libraryBrowser, cardBuilder, appSettings, groupedcards, dom) {
+﻿define(['libraryBrowser', 'cardBuilder', 'appSettings', 'components/groupedcards', 'dom', 'apphost', 'scrollStyles', 'emby-button', 'paper-icon-button-light', 'emby-itemscontainer'], function (libraryBrowser, cardBuilder, appSettings, groupedcards, dom, appHost) {
 
     function getUserViews(userId) {
 
@@ -9,7 +9,6 @@
     }
 
     function enableScrollX() {
-
         return browserInfo.mobile && AppInfo.enableAppLayouts;
     }
 
@@ -167,8 +166,6 @@
             if (!AppInfo.enableAppLayouts) {
                 infos.push(getUpgradeMobileLayoutsInfo);
             }
-
-            appSettings.set(cacheKey, new Date().getTime());
 
             return infos[getRandomInt(0, infos.length - 1)]();
         });
@@ -443,13 +440,14 @@
 
                 html += '</div>';
 
-                var scrollX = enableScrollX() && dom.getWindowSize().innerWidth >= 640;
+                var scrollX = enableScrollX() && dom.getWindowSize().innerWidth >= 600;
 
                 if (scrollX) {
                     html += '<div is="emby-itemscontainer" class="hiddenScrollX itemsContainer">';
                 } else {
                     html += '<div is="emby-itemscontainer" class="itemsContainer vertical-wrap">';
                 }
+
                 html += cardBuilder.getCardsHtml({
                     items: items,
                     shape: scrollX ? 'overflowBackdrop' : shape,
@@ -457,7 +455,6 @@
                     centerText: true,
                     overlayText: false,
                     lazy: true,
-                    autoThumb: true,
                     transition: false,
                     allowBottomPadding: !enableScrollX()
                 });
@@ -556,6 +553,9 @@
                 } else {
                     html += '<div is="emby-itemscontainer" class="itemsContainer vertical-wrap">';
                 }
+
+                var supportsImageAnalysis = appHost.supports('imageanalysis');
+
                 html += cardBuilder.getCardsHtml({
                     items: result.Items,
                     preferThumb: true,
@@ -566,8 +566,10 @@
                     lazy: true,
                     overlayPlayButton: true,
                     context: 'home',
-                    centerText: true,
-                    allowBottomPadding: !enableScrollX()
+                    centerText: !supportsImageAnalysis,
+                    allowBottomPadding: !enableScrollX(),
+                    cardLayout: supportsImageAnalysis,
+                    vibrant: supportsImageAnalysis
                 });
                 html += '</div>';
             }
@@ -656,7 +658,7 @@
         });
     }
 
-    function loadLatestLiveTvRecordings(elem, userId, index) {
+    function loadLatestLiveTvRecordings(elem, userId) {
 
         return ApiClient.getLiveTvRecordings({
 
@@ -672,10 +674,8 @@
 
             if (result.Items.length) {
 
-                var cssClass = index !== 0 ? 'listHeader' : 'listHeader';
-
                 html += '<div>';
-                html += '<h1 style="display:inline-block; vertical-align:middle;" class="' + cssClass + '">' + Globalize.translate('HeaderLatestTvRecordings') + '</h1>';
+                html += '<h1 style="display:inline-block; vertical-align:middle;" class="listHeader">' + Globalize.translate('HeaderLatestTvRecordings') + '</h1>';
                 html += '<a href="livetv.html?tab=3" onclick="LibraryBrowser.showTab(\'livetv.html\',3);" class="clearLink" style="margin-left:2em;"><button is="emby-button" type="button" class="raised more mini"><span>' + Globalize.translate('ButtonMore') + '</span></button></a>';
                 html += '</div>';
             }
@@ -685,6 +685,9 @@
             } else {
                 html += '<div is="emby-itemscontainer" class="itemsContainer vertical-wrap">';
             }
+
+            var supportsImageAnalysis = appHost.supports('imageanalysis');
+
             html += cardBuilder.getCardsHtml({
                 items: result.Items,
                 shape: enableScrollX() ? 'autooverflow' : 'auto',
@@ -693,9 +696,13 @@
                 coverImage: true,
                 lazy: true,
                 showDetailsMenu: true,
-                centerText: true,
+                centerText: !supportsImageAnalysis,
+                overlayText: false,
                 overlayPlayButton: true,
-                allowBottomPadding: !enableScrollX()
+                allowBottomPadding: !enableScrollX(),
+                preferThumb: true,
+                cardLayout: supportsImageAnalysis,
+                vibrant: supportsImageAnalysis
 
             });
             html += '</div>';

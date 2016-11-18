@@ -294,14 +294,12 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                     {
                         var text = reader.ReadElementContentAsString();
 
-                        var hasCriticRating = item as IHasCriticRating;
-
-                        if (hasCriticRating != null && !string.IsNullOrEmpty(text))
+                        if (!string.IsNullOrEmpty(text))
                         {
                             float value;
                             if (float.TryParse(text, NumberStyles.Any, _usCulture, out value))
                             {
-                                hasCriticRating.CriticRating = value;
+                                item.CriticRating = value;
                             }
                         }
 
@@ -388,12 +386,7 @@ namespace MediaBrowser.XbmcMetadata.Parsers
 
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            var hasShortOverview = item as IHasShortOverview;
-
-                            if (hasShortOverview != null)
-                            {
-                                hasShortOverview.ShortOverview = val;
-                            }
+                            item.ShortOverview = val;
                         }
                         break;
                     }
@@ -418,12 +411,7 @@ namespace MediaBrowser.XbmcMetadata.Parsers
 
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            var hasCriticRating = item as IHasCriticRating;
-
-                            if (hasCriticRating != null)
-                            {
-                                hasCriticRating.CriticRatingSummary = val;
-                            }
+                            item.CriticRatingSummary = val;
                         }
 
                         break;
@@ -492,13 +480,9 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                     {
                         var val = reader.ReadElementContentAsString();
 
-                        var hasTagline = item as IHasTaglines;
-                        if (hasTagline != null)
+                        if (!string.IsNullOrWhiteSpace(val))
                         {
-                            if (!string.IsNullOrWhiteSpace(val))
-                            {
-                                hasTagline.AddTagline(val);
-                            }
+                            item.Tagline = val;
                         }
                         break;
                     }
@@ -507,20 +491,12 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                     {
                         var val = reader.ReadElementContentAsString();
 
-                        var hasProductionLocations = item as IHasProductionLocations;
-                        if (hasProductionLocations != null)
+                        if (!string.IsNullOrWhiteSpace(val))
                         {
-                            if (!string.IsNullOrWhiteSpace(val))
-                            {
-                                var parts = val.Split('/')
-                                    .Select(i => i.Trim())
-                                    .Where(i => !string.IsNullOrWhiteSpace(i));
-
-                                foreach (var p in parts)
-                                {
-                                    hasProductionLocations.AddProductionLocation(p);
-                                }
-                            }
+                            item.ProductionLocations = val.Split('/')
+                                .Select(i => i.Trim())
+                                .Where(i => !string.IsNullOrWhiteSpace(i))
+                                .ToList();
                         }
                         break;
                     }

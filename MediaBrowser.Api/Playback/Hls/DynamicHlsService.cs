@@ -171,14 +171,15 @@ namespace MediaBrowser.Api.Playback.Hls
                 return await GetSegmentResult(state, playlistPath, segmentPath, requestedIndex, job, cancellationToken).ConfigureAwait(false);
             }
 
-            await ApiEntryPoint.Instance.TranscodingStartLock.WaitAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+            var transcodingLock = ApiEntryPoint.Instance.GetTranscodingLock(playlistPath);
+            await transcodingLock.WaitAsync(cancellationTokenSource.Token).ConfigureAwait(false);
             var released = false;
             try
             {
                 if (FileSystem.FileExists(segmentPath))
                 {
                     job = ApiEntryPoint.Instance.OnTranscodeBeginRequest(playlistPath, TranscodingJobType);
-                    ApiEntryPoint.Instance.TranscodingStartLock.Release();
+                    transcodingLock.Release();
                     released = true;
                     return await GetSegmentResult(state, playlistPath, segmentPath, requestedIndex, job, cancellationToken).ConfigureAwait(false);
                 }
@@ -242,7 +243,7 @@ namespace MediaBrowser.Api.Playback.Hls
             {
                 if (!released)
                 {
-                    ApiEntryPoint.Instance.TranscodingStartLock.Release();
+                    transcodingLock.Release();
                 }
             }
 
@@ -884,14 +885,16 @@ namespace MediaBrowser.Api.Playback.Hls
             }
 
             var mapArgs = state.IsOutputVideo ? GetMapArgs(state) : string.Empty;
+            var enableSplittingOnNonKeyFrames = state.VideoRequest.EnableSplittingOnNonKeyFrames && string.Equals(state.OutputVideoCodec, "copy", StringComparison.OrdinalIgnoreCase);
+            enableSplittingOnNonKeyFrames = false;
+            // TODO: check libavformat version for 57 50.100 and use -hls_flags split_by_time
+            var hlsProtocolSupportsSplittingByTime = false;
 
-            var enableGenericSegmenter = false;
-
-            if (enableGenericSegmenter)
+            if (enableSplittingOnNonKeyFrames && !hlsProtocolSupportsSplittingByTime)
             {
                 var outputTsArg = Path.Combine(Path.GetDirectoryName(outputPath), Path.GetFileNameWithoutExtension(outputPath)) + "%d" + GetSegmentFileExtension(state);
 
-                return string.Format("{0} {10} {1} -map_metadata -1 -threads {2} {3} {4} {5} -f segment -max_delay 5000000 -avoid_negative_ts disabled -start_at_zero -segment_time {6} -segment_format mpegts -segment_list_type m3u8 -segment_start_number {7} -segment_list \"{8}\" -y \"{9}\"",
+                return string.Format("{0} {10} {1} -map_metadata -1 -threads {2} {3} {4} {5} -f segment -max_delay 5000000 -avoid_negative_ts disabled -start_at_zero -segment_time {6} -break_non_keyframes  1 -segment_format mpegts -segment_list_type m3u8 -segment_start_number {7} -segment_list \"{8}\" -y \"{9}\"",
                     inputModifier,
                     GetInputArgument(state),
                     threads,
@@ -906,7 +909,10 @@ namespace MediaBrowser.Api.Playback.Hls
                     ).Trim();
             }
 
-            return string.Format("{0}{11} {1} -map_metadata -1 -threads {2} {3} {4}{5} {6} -max_delay 5000000 -avoid_negative_ts disabled -start_at_zero -hls_time {7} -start_number {8} -hls_list_size {9} -y \"{10}\"",
+            var splitByTime = hlsProtocolSupportsSplittingByTime && enableSplittingOnNonKeyFrames;
+            var splitByTimeArg = splitByTime ? " -hls_flags split_by_time" : "";
+
+            return string.Format("{0}{12} {1} -map_metadata -1 -threads {2} {3} {4}{5} {6} -max_delay 5000000 -avoid_negative_ts disabled -start_at_zero -hls_time {7}{8} -start_number {9} -hls_list_size {10} -y \"{11}\"",
                             inputModifier,
                             GetInputArgument(state),
                             threads,
@@ -915,16 +921,12 @@ namespace MediaBrowser.Api.Playback.Hls
                             timestampOffsetParam,
                             GetAudioArguments(state),
                             state.SegmentLength.ToString(UsCulture),
+                            splitByTimeArg,
                             startNumberParam,
                             state.HlsListSize.ToString(UsCulture),
                             outputPath,
                             toTimeParam
                             ).Trim();
-        }
-
-        protected override bool EnableThrottling(StreamState state)
-        {
-            return true;
         }
 
         /// <summary>

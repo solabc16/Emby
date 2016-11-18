@@ -72,6 +72,11 @@ namespace MediaBrowser.Common.Implementations.Logging
         /// <param name="paramList">The param list.</param>
         public void Debug(string message, params object[] paramList)
         {
+            if (_logManager.LogSeverity == LogSeverity.Info)
+            {
+                return;
+            }
+
             _logger.Debug(message, paramList);
         }
 
@@ -122,7 +127,9 @@ namespace MediaBrowser.Common.Implementations.Logging
             {
                 for (var i = 0; i < paramList.Length; i++)
                 {
-                    message = message.Replace("{" + i + "}", paramList[i].ToString());
+                    var obj = paramList[i];
+
+                    message = message.Replace("{" + i + "}", (obj == null ? "null" : obj.ToString()));
                 }
             }
 
@@ -137,6 +144,11 @@ namespace MediaBrowser.Common.Implementations.Logging
         /// <param name="additionalContent">Content of the additional.</param>
         public void LogMultiline(string message, LogSeverity severity, StringBuilder additionalContent)
         {
+            if (severity == LogSeverity.Debug && _logManager.LogSeverity == LogSeverity.Info)
+            {
+                return;
+            }
+
             additionalContent.Insert(0, message + Environment.NewLine);
 
             const char tabChar = '\t';

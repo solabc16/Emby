@@ -4,10 +4,24 @@
     padding: 0;
     border: none;
     max-height: 84%;
+    border-radius: 1px !important;
+    color: #fff;
+}
+
+.actionsheet-not-fullscreen {
+    background-color: #121314;
+    max-width: 90%;
+    max-height: 90%;
+    color: #eee;
+}
+
+.actionSheetMenuItem:hover {
+    background-color: #222;
 }
 
 .actionsheet-fullscreen {
     max-height: none;
+    border-radius: 0 !important;
 }
 
 .actionSheetContent-centered {
@@ -24,6 +38,7 @@
     flex-grow: 1;
     align-items: center;
     text-align: center;
+    overflow: hidden;
 }
 
 .actionSheetMenuItem {
@@ -35,6 +50,8 @@
     font-weight: inherit;
     align-items: center;
     flex-shrink: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .actionSheetMenuItem-noflex {
@@ -50,7 +67,7 @@
 }
 
 .actionSheetItemText-extraspacing {
-    padding: .8em 0;
+    padding: .9em 0;
 }
 
 .emby-button-noflex .actionSheetItemText {
@@ -87,7 +104,7 @@
 }
 
 .actionsheet-extraSpacing {
-    font-size: 108%;
+    font-size: 112%;
 }
 
 .btnCloseActionSheet {

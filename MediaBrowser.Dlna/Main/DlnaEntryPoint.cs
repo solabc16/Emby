@@ -14,8 +14,12 @@ using MediaBrowser.Dlna.Ssdp;
 using MediaBrowser.Model.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.MediaEncoding;
+using Rssdp;
+using Rssdp.Infrastructure;
 
 namespace MediaBrowser.Dlna.Main
 {
@@ -38,12 +42,11 @@ namespace MediaBrowser.Dlna.Main
         private readonly IMediaSourceManager _mediaSourceManager;
         private readonly IMediaEncoder _mediaEncoder;
 
-        private readonly SsdpHandler _ssdpHandler;
         private readonly IDeviceDiscovery _deviceDiscovery;
 
-        private readonly List<string> _registeredServerIds = new List<string>();
         private bool _ssdpHandlerStarted;
         private bool _dlnaServerStarted;
+        private SsdpDevicePublisher _Publisher;
 
         public DlnaEntryPoint(IServerConfigurationManager config,
             ILogManager logManager,
@@ -58,7 +61,7 @@ namespace MediaBrowser.Dlna.Main
             IUserDataManager userDataManager,
             ILocalizationManager localization,
             IMediaSourceManager mediaSourceManager,
-            ISsdpHandler ssdpHandler, IDeviceDiscovery deviceDiscovery, IMediaEncoder mediaEncoder)
+            IDeviceDiscovery deviceDiscovery, IMediaEncoder mediaEncoder)
         {
             _config = config;
             _appHost = appHost;
@@ -74,7 +77,6 @@ namespace MediaBrowser.Dlna.Main
             _mediaSourceManager = mediaSourceManager;
             _deviceDiscovery = deviceDiscovery;
             _mediaEncoder = mediaEncoder;
-            _ssdpHandler = (SsdpHandler)ssdpHandler;
             _logger = logManager.GetLogger("Dlna");
         }
 
@@ -110,18 +112,6 @@ namespace MediaBrowser.Dlna.Main
         {
             var options = _config.GetDlnaConfiguration();
 
-            if (!options.EnableServer && !options.EnablePlayTo && !_config.Configuration.EnableUPnP)
-            {
-                if (_ssdpHandlerStarted)
-                {
-                    // Sat/ip live tv depends on device discovery, as well as hd homerun detection
-                    // In order to allow this to be disabled, we need a modular way of knowing if there are 
-                    // any parts of the system that are dependant on it
-                    // DisposeSsdpHandler();
-                }
-                return;
-            }
-
             if (!_ssdpHandlerStarted)
             {
                 StartSsdpHandler();
@@ -154,7 +144,7 @@ namespace MediaBrowser.Dlna.Main
         {
             try
             {
-                _ssdpHandler.Start();
+                StartPublishing();
                 _ssdpHandlerStarted = true;
 
                 StartDeviceDiscovery();
@@ -165,13 +155,22 @@ namespace MediaBrowser.Dlna.Main
             }
         }
 
+        private void LogMessage(string msg)
+        {
+            //_logger.Debug(msg);
+        }
+
+        private void StartPublishing()
+        {
+            SsdpDevicePublisherBase.LogFunction = LogMessage;
+            _Publisher = new SsdpDevicePublisher();
+        }
+
         private void StartDeviceDiscovery()
         {
             try
             {
-                ((DeviceDiscovery)_deviceDiscovery).Start(_ssdpHandler);
-
-                //DlnaChannel.Current.Start(() => _registeredServerIds.ToList());
+                ((DeviceDiscovery)_deviceDiscovery).Start();
             }
             catch (Exception ex)
             {
@@ -199,8 +198,6 @@ namespace MediaBrowser.Dlna.Main
             {
                 ((DeviceDiscovery)_deviceDiscovery).Dispose();
 
-                _ssdpHandler.Dispose();
-
                 _ssdpHandlerStarted = false;
             }
             catch (Exception ex)
@@ -225,7 +222,17 @@ namespace MediaBrowser.Dlna.Main
 
         private async Task RegisterServerEndpoints()
         {
-            foreach (var address in await _appHost.GetLocalIpAddresses().ConfigureAwait(false))
+            if (!_config.GetDlnaConfiguration().BlastAliveMessages)
+            {
+                return;
+            }
+
+            var cacheLength = _config.GetDlnaConfiguration().BlastAliveMessageIntervalSeconds;
+            _Publisher.SupportPnpRootDevice = false;
+
+            var addresses = (await _appHost.GetLocalIpAddresses().ConfigureAwait(false)).ToList();
+
+            foreach (var address in addresses)
             {
                 //if (IPAddress.IsLoopback(address))
                 //{
@@ -234,26 +241,70 @@ namespace MediaBrowser.Dlna.Main
                 //}
 
                 var addressString = address.ToString();
-                var udn = addressString.GetMD5().ToString("N");
 
-                var descriptorURI = "/dlna/" + udn + "/description.xml";
+                var udn = CreateUuid(addressString);
 
-                var uri = new Uri(_appHost.GetLocalApiUrl(address) + descriptorURI);
+                var fullService = "urn:schemas-upnp-org:device:MediaServer:1";
 
-                var services = new List<string>
+                _logger.Info("Registering publisher for {0} on {1}", fullService, addressString);
+
+                var descriptorUri = "/dlna/" + udn + "/description.xml";
+                var uri = new Uri(_appHost.GetLocalApiUrl(address) + descriptorUri);
+
+                var device = new SsdpRootDevice
                 {
-                    "upnp:rootdevice",
-                    "urn:schemas-upnp-org:device:MediaServer:1",
-                    "urn:schemas-upnp-org:service:ContentDirectory:1",
-                    "urn:schemas-upnp-org:service:ConnectionManager:1",
-                    "urn:microsoft.com:service:X_MS_MediaReceiverRegistrar:1",
-                    "uuid:" + udn
+                    CacheLifetime = TimeSpan.FromSeconds(cacheLength), //How long SSDP clients can cache this info.
+                    Location = uri, // Must point to the URL that serves your devices UPnP description document. 
+                    FriendlyName = "Emby Server",
+                    Manufacturer = "Emby",
+                    ModelName = "Emby Server",
+                    Uuid = udn
+                    // This must be a globally unique value that survives reboots etc. Get from storage or embedded hardware etc.                
                 };
 
-                _ssdpHandler.RegisterNotification(udn, uri, address, services);
+                SetProperies(device, fullService);
+                _Publisher.AddDevice(device);
 
-                _registeredServerIds.Add(udn);
+                var embeddedDevices = new List<string>
+                {
+                    "urn:schemas-upnp-org:service:ContentDirectory:1",
+                    "urn:schemas-upnp-org:service:ConnectionManager:1",
+                    "urn:microsoft.com:service:X_MS_MediaReceiverRegistrar:1"
+                };
+
+                foreach (var subDevice in embeddedDevices)
+                {
+                    var embeddedDevice = new SsdpEmbeddedDevice
+                    {
+                        FriendlyName = device.FriendlyName,
+                        Manufacturer = device.Manufacturer,
+                        ModelName = device.ModelName,
+                        Uuid = udn
+                        // This must be a globally unique value that survives reboots etc. Get from storage or embedded hardware etc.                
+                    };
+
+                    SetProperies(embeddedDevice, subDevice);
+                    device.AddDevice(embeddedDevice);
+                }
             }
+        }
+
+        private string CreateUuid(string text)
+        {
+            return text.GetMD5().ToString("N");
+        }
+
+        private void SetProperies(SsdpDevice device, string fullDeviceType)
+        {
+            var service = fullDeviceType.Replace("urn:", string.Empty).Replace(":1", string.Empty);
+
+            var serviceParts = service.Split(':');
+
+            var deviceTypeNamespace = serviceParts[0].Replace('.', '-');
+
+            device.DeviceTypeNamespace = deviceTypeNamespace;
+            device.DeviceClass = serviceParts[1];
+            device.DeviceType = serviceParts[2];
         }
 
         private readonly object _syncLock = new object();
@@ -315,19 +366,25 @@ namespace MediaBrowser.Dlna.Main
 
         public void DisposeDlnaServer()
         {
-            foreach (var id in _registeredServerIds)
+            if (_Publisher != null)
             {
-                try
-                {
-                    _ssdpHandler.UnregisterNotification(id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.ErrorException("Error unregistering server", ex);
-                }
-            }
+                var devices = _Publisher.Devices.ToList();
+                var tasks = devices.Select(i => _Publisher.RemoveDevice(i)).ToArray();
 
-            _registeredServerIds.Clear();
+                Task.WaitAll(tasks);
+                //foreach (var device in devices)
+                //{
+                //    try
+                //    {
+                //        _Publisher.RemoveDevice(device);
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        _logger.ErrorException("Error sending bye bye", ex);
+                //    }
+                //}
+                _Publisher.Dispose();
+            }
 
             _dlnaServerStarted = false;
         }

@@ -36,7 +36,7 @@ namespace MediaBrowser.Controller.Entities.TV
         {
             get
             {
-                return true;
+                return false;
             }
         }
 
@@ -153,8 +153,6 @@ namespace MediaBrowser.Controller.Entities.TV
             var user = query.User;
 
             Func<BaseItem, bool> filter = i => UserViewBuilder.Filter(i, user, query, UserDataManager, LibraryManager);
-
-            var id = Guid.NewGuid().ToString("N");
 
             var items = GetEpisodes(user).Where(filter);
 

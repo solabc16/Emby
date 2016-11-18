@@ -1,4 +1,5 @@
 ﻿define(['dialogHelper', 'layoutManager', 'globalize', 'require', 'paper-icon-button-light', 'emby-input', 'emby-select', 'css!./../formdialog'], function (dialogHelper, layoutManager, globalize, require) {
+    'use strict';
 
     function centerFocus(elem, horiz, on) {
         require(['scrollHelper'], function (scrollHelper) {
@@ -20,7 +21,7 @@
                 if (layoutManager.tv) {
                     dialogOptions.size = 'fullscreen';
                 } else {
-                    dialogOptions.size = 'medium';
+                    dialogOptions.size = 'medium-tall';
                 }
 
                 var dlg = dialogHelper.createDialog(dialogOptions);
@@ -57,6 +58,15 @@
                     }
                 });
 
+                dlg.querySelector('.selectPersonType').addEventListener('change', function (e) {
+
+                    if (this.value === 'Actor') {
+                        dlg.querySelector('.fldRole').classList.remove('hide');
+                    } else {
+                        dlg.querySelector('.fldRole').classList.add('hide');
+                    }
+                });
+
                 dlg.querySelector('.btnCancel').addEventListener('click', function (e) {
 
                     dialogHelper.close(dlg);
@@ -75,6 +85,10 @@
                     e.preventDefault();
                     return false;
                 });
+
+                dlg.querySelector('.selectPersonType').dispatchEvent(new CustomEvent('change', {
+                    bubbles: true
+                }));
             });
         });
     }

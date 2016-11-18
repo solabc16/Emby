@@ -66,10 +66,12 @@ namespace MediaBrowser.Server.Implementations.Intros
             var candidates = new List<ItemWithTrailer>();
 
             var trailerTypes = new List<TrailerType>();
+            var sourceTypes = new List<SourceType>();
 
             if (config.EnableIntrosFromMoviesInLibrary)
             {
                 trailerTypes.Add(TrailerType.LocalTrailer);
+                sourceTypes.Add(SourceType.Library);
             }
 
             if (IsSupporter)
@@ -77,18 +79,22 @@ namespace MediaBrowser.Server.Implementations.Intros
                 if (config.EnableIntrosFromUpcomingTrailers)
                 {
                     trailerTypes.Add(TrailerType.ComingSoonToTheaters);
+                    sourceTypes.Clear();
                 }
                 if (config.EnableIntrosFromUpcomingDvdMovies)
                 {
                     trailerTypes.Add(TrailerType.ComingSoonToDvd);
+                    sourceTypes.Clear();
                 }
                 if (config.EnableIntrosFromUpcomingStreamingMovies)
                 {
                     trailerTypes.Add(TrailerType.ComingSoonToStreaming);
+                    sourceTypes.Clear();
                 }
                 if (config.EnableIntrosFromSimilarMovies)
                 {
                     trailerTypes.Add(TrailerType.Archive);
+                    sourceTypes.Clear();
                 }
             }
 
@@ -99,10 +105,15 @@ namespace MediaBrowser.Server.Implementations.Intros
                     IncludeItemTypes = new[] { typeof(Trailer).Name },
                     TrailerTypes = trailerTypes.ToArray(),
                     SimilarTo = item,
-                    IsPlayed = config.EnableIntrosForWatchedContent ? (bool?) null : false,
+                    IsPlayed = config.EnableIntrosForWatchedContent ? (bool?)null : false,
                     MaxParentalRating = config.EnableIntrosParentalControl ? ratingLevel : null,
-                    Limit = config.TrailerLimit
-                });
+                    BlockUnratedItems = config.EnableIntrosParentalControl ? new[] { UnratedItem.Trailer } : new UnratedItem[] { },
+
+                    // Account for duplicates by imdb id, since the database doesn't support this yet
+                    Limit = config.TrailerLimit * 2,
+                    SourceTypes = sourceTypes.ToArray()
+
+                }).Where(i => string.IsNullOrWhiteSpace(i.GetProviderId(MetadataProviders.Imdb)) || !string.Equals(i.GetProviderId(MetadataProviders.Imdb), item.GetProviderId(MetadataProviders.Imdb), StringComparison.OrdinalIgnoreCase)).Take(config.TrailerLimit);
 
                 candidates.AddRange(trailerResult.Select(i => new ItemWithTrailer
                 {
@@ -110,7 +121,7 @@ namespace MediaBrowser.Server.Implementations.Intros
                     Type = i.SourceType == SourceType.Channel ? ItemWithTrailerType.ChannelTrailer : ItemWithTrailerType.ItemWithTrailer,
                     LibraryManager = _libraryManager
                 }));
-            } 
+            }
 
             return GetResult(item, candidates, config);
         }
@@ -197,7 +208,7 @@ namespace MediaBrowser.Server.Implementations.Intros
                 }
 
                 returnResult.AddRange(GetMediaInfoIntrosByTags(allIntros, item.Tags).Take(1));
-                
+
                 return returnResult.DistinctBy(i => i.Path, StringComparer.OrdinalIgnoreCase);
             }
             catch (IOException)

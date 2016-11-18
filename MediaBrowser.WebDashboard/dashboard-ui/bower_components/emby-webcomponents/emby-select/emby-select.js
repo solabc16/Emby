@@ -1,4 +1,5 @@
 ﻿define(['layoutManager', 'browser', 'actionsheet', 'css!./emby-select', 'registerElement'], function (layoutManager, browser, actionsheet) {
+    'use strict';
 
     var EmbySelectPrototype = Object.create(HTMLSelectElement.prototype);
 
@@ -54,7 +55,7 @@
 
     function getLabel(select) {
         var elem = select.previousSibling;
-        while (elem && elem.tagName != 'LABEL') {
+        while (elem && elem.tagName !== 'LABEL') {
             elem = elem.previousSibling;
         }
         return elem;
@@ -111,14 +112,6 @@
     var inputId = 0;
 
     EmbySelectPrototype.createdCallback = function () {
-
-        var parent = this.parentNode;
-        if (parent && !parent.classList.contains('selectContainer')) {
-            var div = this.ownerDocument.createElement('div');
-            div.classList.add('selectContainer');
-            parent.replaceChild(div, this);
-            div.appendChild(this);
-        }
 
         if (!this.id) {
             this.id = 'embyselect' + inputId;

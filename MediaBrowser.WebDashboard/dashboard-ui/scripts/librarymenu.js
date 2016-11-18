@@ -1,4 +1,4 @@
-﻿define(['imageLoader', 'layoutManager', 'viewManager', 'libraryBrowser', 'apphost', 'paper-icon-button-light', 'material-icons'], function (imageLoader, layoutManager, viewManager, libraryBrowser, appHost) {
+﻿define(['imageLoader', 'layoutManager', 'viewManager', 'libraryBrowser', 'apphost', 'embyRouter', 'paper-icon-button-light', 'material-icons'], function (imageLoader, layoutManager, viewManager, libraryBrowser, appHost, embyRouter) {
 
     var enableBottomTabs = AppInfo.isNativeApp;
     var enableLibraryNavDrawer = !enableBottomTabs;
@@ -60,7 +60,7 @@
 
     function onBackClick() {
 
-        Emby.Page.back();
+        embyRouter.back();
     }
 
     function updateUserInHeader(user) {
@@ -687,7 +687,7 @@
                 var helpUrl = page.getAttribute('data-helpurl');
 
                 if (helpUrl) {
-                    html += '<a href="' + helpUrl + '" target="_blank" class="clearLink" style="margin-left:2em;" title="' + Globalize.translate('ButtonHelp') + '"><button is="emby-button" type="button" class="button-accent-flat" style="margin:0;font-weight:normal;font-size:14px;padding:.25em;display:block;align-items:center;"><i class="md-icon">info</i><span>' + Globalize.translate('ButtonHelp') + '</span></button></a>';
+                    html += '<a href="' + helpUrl + '" target="_blank" class="clearLink" style="margin-left:2em;" title="' + Globalize.translate('ButtonHelp') + '"><button is="emby-button" type="button" class="button-accent-flat button-flat" style="margin:0;font-weight:normal;font-size:14px;padding:.25em;display:block;align-items:center;"><i class="md-icon">info</i><span>' + Globalize.translate('ButtonHelp') + '</span></button></a>';
                 }
             }
 
@@ -908,7 +908,7 @@
         var backButton = document.querySelector('.headerBackButton');
 
         if (backButton) {
-            if (page.getAttribute('data-backbutton') == 'true' && Emby.Page.canGoBack()) {
+            if (page.getAttribute('data-backbutton') == 'true' && embyRouter.canGoBack()) {
                 backButton.classList.remove('hide');
             } else {
                 backButton.classList.add('hide');
@@ -984,7 +984,7 @@
         // At least 240
         drawerWidth = Math.max(drawerWidth, 240);
         // But not exceeding 280
-        drawerWidth = Math.min(drawerWidth, 280);
+        drawerWidth = Math.min(drawerWidth, 260);
 
         var disableEdgeSwipe = false;
 
