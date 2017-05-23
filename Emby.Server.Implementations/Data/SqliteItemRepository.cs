@@ -1258,22 +1258,6 @@ namespace Emby.Server.Implementations.Data
         {
             if (_config.Configuration.SkipDeserializationForBasicTypes)
             {
-                if (type == typeof(MusicGenre))
-                {
-                    return false;
-                }
-                if (type == typeof(GameGenre))
-                {
-                    return false;
-                }
-                if (type == typeof(Genre))
-                {
-                    return false;
-                }
-                if (type == typeof(Studio))
-                {
-                    return false;
-                }
                 if (type == typeof(Person))
                 {
                     return false;
@@ -1282,23 +1266,7 @@ namespace Emby.Server.Implementations.Data
                 {
                     return false;
                 }
-                if (type == typeof(ManualCollectionsFolder))
-                {
-                    return false;
-                }
-                if (type == typeof(CameraUploadsFolder))
-                {
-                    return false;
-                }
-                if (type == typeof(PlaylistsFolder))
-                {
-                    return false;
-                }
                 if (type == typeof(UserRootFolder))
-                {
-                    return false;
-                }
-                if (type == typeof(PhotoAlbum))
                 {
                     return false;
                 }
@@ -1310,6 +1278,41 @@ namespace Emby.Server.Implementations.Data
                 {
                     return false;
                 }
+            }
+
+            if (type == typeof(MusicGenre))
+            {
+                return false;
+            }
+            if (type == typeof(GameGenre))
+            {
+                return false;
+            }
+            if (type == typeof(Genre))
+            {
+                return false;
+            }
+            if (type == typeof(Studio))
+            {
+                return false;
+            }
+
+            if (type == typeof(ManualCollectionsFolder))
+            {
+                return false;
+            }
+            if (type == typeof(CameraUploadsFolder))
+            {
+                return false;
+            }
+            if (type == typeof(PlaylistsFolder))
+            {
+                return false;
+            }
+
+            if (type == typeof(PhotoAlbum))
+            {
+                return false;
             }
 
             if (type == typeof(Year))
@@ -2851,7 +2854,7 @@ namespace Emby.Server.Implementations.Data
             }
             if (string.Equals(name, ItemSortBy.SeriesSortName, StringComparison.OrdinalIgnoreCase))
             {
-                return new Tuple<string, bool>("(Select SortName from TypedBaseItems where B.Guid=A.SeriesId)", false);
+                return new Tuple<string, bool>("SeriesName", false);
             }
 
             return new Tuple<string, bool>(name, false);
